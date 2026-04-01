@@ -16,7 +16,7 @@ class QuizGame:
     def __init__(self, state_file: str = "state.json") -> None:
         self.state_path = Path(state_file)
         self.quizzes: list[Quiz] = []
-        self.best_score: int | None = None
+        self.best_percent: float | None = None
         self.history: list[dict[str, Any]] = []
         self.load_state()
 
@@ -68,13 +68,14 @@ class QuizGame:
         print("3. 퀴즈 목록")
         print("4. 퀴즈 삭제")
         print("5. 최고 점수 확인")
-        print("6. 종료")
+        print("6. 최고 기록 리셋")
+        print("7. 종료")
         print("=" * 38)
 
     def run(self) -> None:
         while True:
             self.show_menu()
-            choice = self.get_int_input("선택: ", valid_range=range(1, 7))
+            choice = self.get_int_input("선택: ", valid_range=range(1, 8))
 
             if choice == 1:
                 self.play_quiz()
@@ -87,6 +88,8 @@ class QuizGame:
             elif choice == 5:
                 self.show_best_score()
             elif choice == 6:
+                self.reset_best_score()
+            elif choice == 7:
                 self.safe_exit("프로그램을 종료합니다.")
                 break
 
@@ -125,6 +128,11 @@ class QuizGame:
         if score.is_integer():
             return str(int(score))
         return f"{score:.1f}"
+
+    def format_percent(self, percent: float) -> str:
+        if percent.is_integer():
+            return str(int(percent))
+        return f"{percent:.1f}"
 
     def play_quiz(self) -> None:
         if not self.quizzes:
@@ -176,16 +184,16 @@ class QuizGame:
         print("\n" + "=" * 38)
         print(
             f"결과: {quiz_count}문제 중 총점 {self.format_score(score)}점 "
-            f"({self.format_score(percent)}점)"
+            f"({self.format_percent(percent)}%)"
         )
 
-        previous_best = self.best_score
+        previous_best = self.best_percent
         if previous_best is None or percent > previous_best:
-            self.best_score = percent
+            self.best_percent = percent
             print("새로운 최고 점수입니다.")
             self.save_state()
         else:
-            print(f"현재 최고 점수는 {self.best_score}점입니다.")
+            print(f"현재 최고 점수는 {self.format_percent(previous_best)}%입니다.")
             self.save_state()
 
         print("=" * 38)
@@ -257,10 +265,25 @@ class QuizGame:
 
     def show_best_score(self) -> None:
         print()
-        if self.best_score is None:
+        if self.best_percent is None:
             print("아직 기록된 최고 점수가 없습니다.")
         else:
-            print(f"최고 점수: {self.best_score}점")
+            print(f"최고 점수: {self.format_percent(self.best_percent)}%")
+
+    def reset_best_score(self) -> None:
+        print()
+        if self.best_percent is None:
+            print("리셋할 최고 기록이 없습니다.")
+            return
+
+        should_reset = self.get_yes_no_input("최고 기록을 리셋할까요? (y/n): ")
+        if not should_reset:
+            print("최고 기록 리셋을 취소했습니다.")
+            return
+
+        self.best_percent = None
+        self.save_state()
+        print("최고 기록을 리셋했습니다.")
 
     def record_history(
         self,
@@ -284,7 +307,7 @@ class QuizGame:
     def load_state(self) -> None:
         if not self.state_path.exists():
             self.quizzes = self.get_default_quizzes()
-            self.best_score = None
+            self.best_percent = None
             self.history = []
             print("저장 파일이 없어 기본 퀴즈 데이터를 불러왔습니다.")
             return
@@ -296,16 +319,26 @@ class QuizGame:
             quizzes_data = data.get("quizzes", [])
             self.quizzes = [Quiz.from_dict(item) for item in quizzes_data]
 
-            raw_best_score = data.get("best_score")
-            self.best_score = None if raw_best_score is None else int(raw_best_score)
             history_data = data.get("history", [])
             self.history = [self.normalize_history_entry(item) for item in history_data]
+            raw_best_percent = data.get("best_percent")
+            if raw_best_percent is not None:
+                self.best_percent = float(raw_best_percent)
+            elif self.history:
+                self.best_percent = max(item["percent"] for item in self.history)
+            else:
+                raw_best_score = data.get("best_score")
+                self.best_percent = None if raw_best_score is None else float(raw_best_score)
 
             if not self.quizzes:
                 self.quizzes = self.get_default_quizzes()
                 print("저장된 퀴즈가 없어 기본 퀴즈 데이터를 불러왔습니다.")
             else:
-                score_text = f", 최고 점수 {self.best_score}점" if self.best_score is not None else ""
+                score_text = (
+                    f", 최고 점수 {self.format_percent(self.best_percent)}%"
+                    if self.best_percent is not None
+                    else ""
+                )
                 print(
                     f"저장된 데이터를 불러왔습니다. "
                     f"(퀴즈 {len(self.quizzes)}개, 기록 {len(self.history)}개{score_text})"
@@ -313,19 +346,19 @@ class QuizGame:
 
         except (json.JSONDecodeError, KeyError, TypeError, ValueError):
             self.quizzes = self.get_default_quizzes()
-            self.best_score = None
+            self.best_percent = None
             self.history = []
             print("state.json 파일이 손상되어 기본 퀴즈 데이터로 시작합니다.")
         except OSError:
             self.quizzes = self.get_default_quizzes()
-            self.best_score = None
+            self.best_percent = None
             self.history = []
             print("파일을 읽는 중 오류가 발생해 기본 퀴즈 데이터로 시작합니다.")
 
     def save_state(self) -> None:
         data: dict[str, Any] = {
             "quizzes": [quiz.to_dict() for quiz in self.quizzes],
-            "best_score": self.best_score,
+            "best_percent": self.best_percent,
             "history": self.history,
         }
 
