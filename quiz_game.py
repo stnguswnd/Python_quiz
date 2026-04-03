@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 import json
 import random
 from pathlib import Path
@@ -16,6 +17,7 @@ class QuizGame:
         self.state_path = Path(state_file)
         self.quizzes: list[Quiz] = []
         self.best_score: int | None = None
+        self.history: list[dict[str, Any]] = []
         self.load_state()
 
     def get_default_quizzes(self) -> list[Quiz]:
@@ -140,16 +142,20 @@ class QuizGame:
 
         print(f"\n퀴즈를 시작합니다. (총 {quiz_count}문제)\n")
         score = 0.0
+        correct_count = 0
+        used_hints = 0
 
         for number, quiz in enumerate(selected_quizzes, start=1):
             print("-" * 38)
             quiz.display(number)
             used_hint = self.get_yes_no_input("힌트를 볼까요? (y/n): ")
             if used_hint:
+                used_hints += 1
                 quiz.display_hint()
             user_answer = self.get_int_input("정답 입력 (1~4): ", valid_range=range(1, 5))
 
             if quiz.is_correct(user_answer):
+                correct_count += 1
                 earned_score = (
                     self.HINT_PENALTY_SCORE if used_hint else self.FULL_SCORE
                 )
@@ -160,6 +166,13 @@ class QuizGame:
                 print(f"오답입니다. 정답은 {quiz.answer}번({correct_text}) 입니다.")
 
         percent = round((score / quiz_count) * 100, 1)
+        self.record_history(
+            total_questions=quiz_count,
+            correct_count=correct_count,
+            used_hints=used_hints,
+            score=score,
+            percent=percent,
+        )
         print("\n" + "=" * 38)
         print(
             f"결과: {quiz_count}문제 중 총점 {self.format_score(score)}점 "
@@ -173,6 +186,7 @@ class QuizGame:
             self.save_state()
         else:
             print(f"현재 최고 점수는 {self.best_score}점입니다.")
+            self.save_state()
 
         print("=" * 38)
 
@@ -248,10 +262,30 @@ class QuizGame:
         else:
             print(f"최고 점수: {self.best_score}점")
 
+    def record_history(
+        self,
+        total_questions: int,
+        correct_count: int,
+        used_hints: int,
+        score: float,
+        percent: float,
+    ) -> None:
+        self.history.append(
+            {
+                "played_at": datetime.now().isoformat(timespec="seconds"),
+                "total_questions": total_questions,
+                "correct_count": correct_count,
+                "used_hints": used_hints,
+                "score": score,
+                "percent": percent,
+            }
+        )
+
     def load_state(self) -> None:
         if not self.state_path.exists():
             self.quizzes = self.get_default_quizzes()
             self.best_score = None
+            self.history = []
             print("저장 파일이 없어 기본 퀴즈 데이터를 불러왔습니다.")
             return
 
@@ -264,27 +298,35 @@ class QuizGame:
 
             raw_best_score = data.get("best_score")
             self.best_score = None if raw_best_score is None else int(raw_best_score)
+            history_data = data.get("history", [])
+            self.history = [self.normalize_history_entry(item) for item in history_data]
 
             if not self.quizzes:
                 self.quizzes = self.get_default_quizzes()
                 print("저장된 퀴즈가 없어 기본 퀴즈 데이터를 불러왔습니다.")
             else:
                 score_text = f", 최고 점수 {self.best_score}점" if self.best_score is not None else ""
-                print(f"저장된 데이터를 불러왔습니다. (퀴즈 {len(self.quizzes)}개{score_text})")
+                print(
+                    f"저장된 데이터를 불러왔습니다. "
+                    f"(퀴즈 {len(self.quizzes)}개, 기록 {len(self.history)}개{score_text})"
+                )
 
         except (json.JSONDecodeError, KeyError, TypeError, ValueError):
             self.quizzes = self.get_default_quizzes()
             self.best_score = None
+            self.history = []
             print("state.json 파일이 손상되어 기본 퀴즈 데이터로 시작합니다.")
         except OSError:
             self.quizzes = self.get_default_quizzes()
             self.best_score = None
+            self.history = []
             print("파일을 읽는 중 오류가 발생해 기본 퀴즈 데이터로 시작합니다.")
 
     def save_state(self) -> None:
         data: dict[str, Any] = {
             "quizzes": [quiz.to_dict() for quiz in self.quizzes],
             "best_score": self.best_score,
+            "history": self.history,
         }
 
         try:
@@ -292,6 +334,16 @@ class QuizGame:
                 json.dump(data, file, ensure_ascii=False, indent=2)
         except OSError:
             print("데이터를 저장하지 못했습니다.")
+
+    def normalize_history_entry(self, data: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "played_at": str(data["played_at"]),
+            "total_questions": int(data["total_questions"]),
+            "correct_count": int(data["correct_count"]),
+            "used_hints": int(data["used_hints"]),
+            "score": float(data["score"]),
+            "percent": float(data["percent"]),
+        }
 
     def safe_exit(self, message: str) -> None:
         self.save_state()
