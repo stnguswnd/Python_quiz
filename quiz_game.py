@@ -9,6 +9,9 @@ from quiz import Quiz
 
 
 class QuizGame:
+    FULL_SCORE = 1.0
+    HINT_PENALTY_SCORE = 0.5
+
     def __init__(self, state_file: str = "state.json") -> None:
         self.state_path = Path(state_file)
         self.quizzes: list[Quiz] = []
@@ -104,6 +107,20 @@ class QuizGame:
 
             return value
 
+    def get_yes_no_input(self, prompt: str) -> bool:
+        while True:
+            raw = input(prompt).strip().lower()
+            if raw in {"y", "yes"}:
+                return True
+            if raw in {"n", "no"}:
+                return False
+            print("y 또는 n으로 입력해주세요.")
+
+    def format_score(self, score: float) -> str:
+        if score.is_integer():
+            return str(int(score))
+        return f"{score:.1f}"
+
     def play_quiz(self) -> None:
         if not self.quizzes:
             print("\n등록된 퀴즈가 없습니다.")
@@ -119,23 +136,32 @@ class QuizGame:
         selected_quizzes = quizzes_to_play[:quiz_count]
 
         print(f"\n퀴즈를 시작합니다. (총 {quiz_count}문제)\n")
-        score = 0
+        score = 0.0
 
         for number, quiz in enumerate(selected_quizzes, start=1):
             print("-" * 38)
             quiz.display(number)
+            used_hint = self.get_yes_no_input("힌트를 볼까요? (y/n): ")
+            if used_hint:
+                quiz.display_hint()
             user_answer = self.get_int_input("정답 입력 (1~4): ", valid_range=range(1, 5))
 
             if quiz.is_correct(user_answer):
-                score += 1
-                print("정답입니다.")
+                earned_score = (
+                    self.HINT_PENALTY_SCORE if used_hint else self.FULL_SCORE
+                )
+                score += earned_score
+                print(f"정답입니다. 획득 점수: {self.format_score(earned_score)}점")
             else:
                 correct_text = quiz.choices[quiz.answer - 1]
                 print(f"오답입니다. 정답은 {quiz.answer}번({correct_text}) 입니다.")
 
-        percent = int((score / quiz_count) * 100)
+        percent = round((score / quiz_count) * 100, 1)
         print("\n" + "=" * 38)
-        print(f"결과: {quiz_count}문제 중 {score}문제 정답! ({percent}점)")
+        print(
+            f"결과: {quiz_count}문제 중 총점 {self.format_score(score)}점 "
+            f"({self.format_score(percent)}점)"
+        )
 
         previous_best = self.best_score
         if previous_best is None or percent > previous_best:

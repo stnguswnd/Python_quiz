@@ -28,6 +28,9 @@ class Quiz:
         for index, choice in enumerate(self.choices, start=1):
             print(f"{index}. {choice}")
 
+    def display_hint(self) -> None:
+        print(f"힌트: {self.hint}")
+
     def is_correct(self, user_answer: int) -> bool:
         return self.answer == user_answer
 
