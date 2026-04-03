@@ -332,9 +332,8 @@ quiz_game.py | 29 +++++++++++++++++++++++++----
 
 ## 14. clone / pull 실습 기록
 
-과제 요구사항에 맞게 `clone`, `pull` 사용 기록을 아래에 정리하면 됩니다.
-
-![게임 기록 화면](./screenshots/깃헙사용.png)
+![깃헙사용1]](./screenshots/깃헙사용.png)
+![깃헙사용22](./screenshots/깃헙사용2.png)
 
 ---
 
