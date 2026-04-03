@@ -487,6 +487,10 @@ quiz_game.py | 29 +++++++++++++++++++++++++----
 ![깃헙사용1](./screenshots/깃헙사용.png)
 ![깃헙사용2](./screenshots/깃헙사용2.png)
 
+### git log --oneline --graph 화면
+
+![깃헙사용3](./screenshots/깃커밋내용.png)
+
 ---
 
 ## 18. 느낀 점
