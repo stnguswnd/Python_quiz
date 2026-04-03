@@ -67,7 +67,7 @@ class QuizGame:
         print("2. 퀴즈 추가")
         print("3. 퀴즈 목록")
         print("4. 퀴즈 삭제")
-        print("5. 최고 점수 확인")
+        print("5. 최고 퍼센트 확인")
         print("6. 최고 기록 리셋")
         print("7. 종료")
         print("=" * 38)
@@ -86,9 +86,9 @@ class QuizGame:
             elif choice == 4:
                 self.delete_quiz()
             elif choice == 5:
-                self.show_best_score()
+                self.show_best_percent()
             elif choice == 6:
-                self.reset_best_score()
+                self.reset_best_percent()
             elif choice == 7:
                 self.safe_exit("프로그램을 종료합니다.")
                 break
@@ -190,10 +190,10 @@ class QuizGame:
         previous_best = self.best_percent
         if previous_best is None or percent > previous_best:
             self.best_percent = percent
-            print("새로운 최고 점수입니다.")
+            print("새로운 최고 퍼센트입니다.")
             self.save_state()
         else:
-            print(f"현재 최고 점수는 {self.format_percent(previous_best)}%입니다.")
+            print(f"현재 최고 퍼센트는 {self.format_percent(previous_best)}%입니다.")
             self.save_state()
 
         print("=" * 38)
@@ -263,14 +263,14 @@ class QuizGame:
         self.save_state()
         print(f"퀴즈를 삭제했습니다: {deleted_quiz.question}")
 
-    def show_best_score(self) -> None:
+    def show_best_percent(self) -> None:
         print()
         if self.best_percent is None:
-            print("아직 기록된 최고 점수가 없습니다.")
+            print("아직 기록된 최고 퍼센트가 없습니다.")
         else:
-            print(f"최고 점수: {self.format_percent(self.best_percent)}%")
+            print(f"최고 퍼센트: {self.format_percent(self.best_percent)}%")
 
-    def reset_best_score(self) -> None:
+    def reset_best_percent(self) -> None:
         print()
         if self.best_percent is None:
             print("리셋할 최고 기록이 없습니다.")
@@ -321,21 +321,22 @@ class QuizGame:
 
             history_data = data.get("history", [])
             self.history = [self.normalize_history_entry(item) for item in history_data]
-            raw_best_percent = data.get("best_percent")
-            if raw_best_percent is not None:
-                self.best_percent = float(raw_best_percent)
+            if "best_percent" in data:
+                raw_best_percent = data["best_percent"]
+                self.best_percent = (
+                    None if raw_best_percent is None else float(raw_best_percent)
+                )
             elif self.history:
                 self.best_percent = max(item["percent"] for item in self.history)
             else:
-                raw_best_score = data.get("best_score")
-                self.best_percent = None if raw_best_score is None else float(raw_best_score)
+                self.best_percent = None
 
             if not self.quizzes:
                 self.quizzes = self.get_default_quizzes()
                 print("저장된 퀴즈가 없어 기본 퀴즈 데이터를 불러왔습니다.")
             else:
                 score_text = (
-                    f", 최고 점수 {self.format_percent(self.best_percent)}%"
+                    f", 최고 퍼센트 {self.format_percent(self.best_percent)}%"
                     if self.best_percent is not None
                     else ""
                 )
