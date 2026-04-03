@@ -64,14 +64,15 @@ class QuizGame:
         print("1. 퀴즈 풀기")
         print("2. 퀴즈 추가")
         print("3. 퀴즈 목록")
-        print("4. 최고 점수 확인")
-        print("5. 종료")
+        print("4. 퀴즈 삭제")
+        print("5. 최고 점수 확인")
+        print("6. 종료")
         print("=" * 38)
 
     def run(self) -> None:
         while True:
             self.show_menu()
-            choice = self.get_int_input("선택: ", valid_range=range(1, 6))
+            choice = self.get_int_input("선택: ", valid_range=range(1, 7))
 
             if choice == 1:
                 self.play_quiz()
@@ -80,8 +81,10 @@ class QuizGame:
             elif choice == 3:
                 self.list_quizzes()
             elif choice == 4:
-                self.show_best_score()
+                self.delete_quiz()
             elif choice == 5:
+                self.show_best_score()
+            elif choice == 6:
                 self.safe_exit("프로그램을 종료합니다.")
                 break
 
@@ -219,6 +222,24 @@ class QuizGame:
         print("-" * 38)
         for index, quiz in enumerate(self.quizzes, start=1):
             print(f"[{index}] (id: {quiz.id}) {quiz.question}")
+
+    def delete_quiz(self) -> None:
+        if not self.quizzes:
+            print("\n삭제할 퀴즈가 없습니다.")
+            return
+
+        print(f"\n삭제할 퀴즈를 선택하세요. (총 {len(self.quizzes)}개)")
+        print("-" * 38)
+        for index, quiz in enumerate(self.quizzes, start=1):
+            print(f"[{index}] (id: {quiz.id}) {quiz.question}")
+
+        delete_index = self.get_int_input(
+            "삭제할 퀴즈 번호: ",
+            valid_range=range(1, len(self.quizzes) + 1),
+        )
+        deleted_quiz = self.quizzes.pop(delete_index - 1)
+        self.save_state()
+        print(f"퀴즈를 삭제했습니다: {deleted_quiz.question}")
 
     def show_best_score(self) -> None:
         print()
