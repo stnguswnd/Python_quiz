@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 from pathlib import Path
 from typing import Any
 
@@ -108,10 +109,19 @@ class QuizGame:
             print("\n등록된 퀴즈가 없습니다.")
             return
 
-        print(f"\n퀴즈를 시작합니다. (총 {len(self.quizzes)}문제)\n")
+        total_quiz_count = len(self.quizzes)
+        quiz_count = self.get_int_input(
+            f"몇 문제를 풀까요? (1~{total_quiz_count}): ",
+            valid_range=range(1, total_quiz_count + 1),
+        )
+        quizzes_to_play = self.quizzes[:]
+        random.shuffle(quizzes_to_play)
+        selected_quizzes = quizzes_to_play[:quiz_count]
+
+        print(f"\n퀴즈를 시작합니다. (총 {quiz_count}문제)\n")
         score = 0
 
-        for number, quiz in enumerate(self.quizzes, start=1):
+        for number, quiz in enumerate(selected_quizzes, start=1):
             print("-" * 38)
             quiz.display(number)
             user_answer = self.get_int_input("정답 입력 (1~4): ", valid_range=range(1, 5))
@@ -123,9 +133,9 @@ class QuizGame:
                 correct_text = quiz.choices[quiz.answer - 1]
                 print(f"오답입니다. 정답은 {quiz.answer}번({correct_text}) 입니다.")
 
-        percent = int((score / len(self.quizzes)) * 100)
+        percent = int((score / quiz_count) * 100)
         print("\n" + "=" * 38)
-        print(f"결과: {len(self.quizzes)}문제 중 {score}문제 정답! ({percent}점)")
+        print(f"결과: {quiz_count}문제 중 {score}문제 정답! ({percent}점)")
 
         previous_best = self.best_score
         if previous_best is None or percent > previous_best:
