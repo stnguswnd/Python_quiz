@@ -4,38 +4,48 @@ from dataclasses import dataclass
 from typing import Any
 
 
-@dataclass  #데이터를 담는 클래스를 간단하게 만들도록 도와주는 문법, #원래는 __init__를 직접 써야 하는데, @dataclass를 쓰면 자동으로 만들어줘
+@dataclass
 class Quiz:
-    question: str #문제 내용
-    choices: list[str] #보기 4개 
-    answer: int #정답 번호 
+    id: int
+    question: str
+    choices: list[str]
+    answer: int
+    hint: str
 
     def __post_init__(self) -> None:
+        if self.id < 1:
+            raise ValueError("퀴즈 id는 1 이상이어야 합니다.")
         if len(self.choices) != 4:
             raise ValueError("선택지는 반드시 4개여야 합니다.")
         if not 1 <= self.answer <= 4:
             raise ValueError("정답 번호는 1~4 사이여야 합니다.")
+        if self.hint.strip() == "":
+            raise ValueError("힌트는 비어 있을 수 없습니다.")
 
-    def display(self, number: int | None = None) -> None: #문제와 보기를 제공함. 
+    def display(self, number: int | None = None) -> None:
         prefix = f"[문제 {number}] " if number is not None else ""
         print(f"{prefix}{self.question}")
         for index, choice in enumerate(self.choices, start=1):
             print(f"{index}. {choice}")
 
-    def is_correct(self, user_answer: int) -> bool: #정답인지 아닌지 비교하는 함수 
+    def is_correct(self, user_answer: int) -> bool:
         return self.answer == user_answer
 
-    def to_dict(self) -> dict[str, Any]: #JSON에 저장하기 위해서 딕셔너리 형태로 바꿈. 
+    def to_dict(self) -> dict[str, Any]:
         return {
+            "id": self.id,
             "question": self.question,
             "choices": self.choices,
             "answer": self.answer,
+            "hint": self.hint,
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Quiz": #딕셔너리를 다시 Quiz객체로 바꿈
-        return cls( #cls는 뭐지?
+    def from_dict(cls, data: dict[str, Any]) -> "Quiz":
+        return cls(
+            id=int(data["id"]),
             question=str(data["question"]),
             choices=[str(choice) for choice in data["choices"]],
             answer=int(data["answer"]),
+            hint=str(data["hint"]),
         )
